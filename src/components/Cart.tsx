@@ -39,8 +39,8 @@ export default function Cart() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {items.map((item) => (
-                <div key={`${item.id}-${item.size}-${item.color}`} className="flex items-center justify-between border-b pb-4">
+              {items.map((item, index) => (
+                <div key={`${item.id}-${item.size}-${item.color}-${index}`} className="flex items-center justify-between border-b pb-4">
                   <div className="flex items-center space-x-4">
                     <img src={item.image} alt={item.name} className="w-16 h-16 object-cover rounded" />
                     <div>
@@ -53,7 +53,7 @@ export default function Cart() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      onClick={() => updateQuantity(item.id, item.size, item.color, item.quantity - 1)}
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
@@ -61,14 +61,14 @@ export default function Cart() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.id, item.size, item.color, item.quantity + 1)}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => removeFromCart(item.id, item.size, item.color)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
