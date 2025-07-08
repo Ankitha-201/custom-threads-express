@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Upload } from 'lucide-react';
 
-// Mock product data
+// Mock product data with color-specific images
 const mockProducts = [
   {
     id: '1',
@@ -19,7 +19,13 @@ const mockProducts = [
     description: 'High-quality cotton t-shirt perfect for custom printing.',
     category: 'T-Shirts',
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    colors: ['White', 'Black', 'Navy', 'Red', 'Gray']
+    colors: [
+      { name: 'White', value: 'white', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&h=500&fit=crop' },
+      { name: 'Black', value: 'black', image: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=500&h=500&fit=crop' },
+      { name: 'Navy', value: 'navy', image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&h=500&fit=crop' },
+      { name: 'Red', value: 'red', image: 'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=500&h=500&fit=crop' },
+      { name: 'Gray', value: 'gray', image: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=500&h=500&fit=crop' }
+    ]
   },
   {
     id: '2',
@@ -29,7 +35,12 @@ const mockProducts = [
     description: 'Comfortable fleece hoodie for custom designs.',
     category: 'Hoodies',
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    colors: ['White', 'Black', 'Navy', 'Gray']
+    colors: [
+      { name: 'White', value: 'white', image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500&h=500&fit=crop' },
+      { name: 'Black', value: 'black', image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=500&h=500&fit=crop' },
+      { name: 'Navy', value: 'navy', image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500&h=500&fit=crop' },
+      { name: 'Gray', value: 'gray', image: 'https://images.unsplash.com/photo-1587224038054-d0e19ba76be0?w=500&h=500&fit=crop' }
+    ]
   },
   {
     id: '3',
@@ -39,7 +50,12 @@ const mockProducts = [
     description: 'Premium baseball cap for custom embroidery.',
     category: 'Accessories',
     sizes: ['One Size'],
-    colors: ['Black', 'White', 'Red', 'Blue']
+    colors: [
+      { name: 'Black', value: 'black', image: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&h=500&fit=crop' },
+      { name: 'White', value: 'white', image: 'https://images.unsplash.com/photo-1575428652377-a2d80d2b0ee7?w=500&h=500&fit=crop' },
+      { name: 'Red', value: 'red', image: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=500&h=500&fit=crop' },
+      { name: 'Blue', value: 'blue', image: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=500&h=500&fit=crop' }
+    ]
   }
 ];
 
@@ -67,6 +83,15 @@ export default function ProductDetail() {
     );
   }
 
+  // Get the current product image based on selected color
+  const getCurrentImage = () => {
+    if (selectedColor) {
+      const colorOption = product.colors.find(c => c.value === selectedColor);
+      return colorOption ? colorOption.image : product.image;
+    }
+    return product.image;
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setCustomImage(e.target.files[0]);
@@ -85,7 +110,7 @@ export default function ProductDetail() {
       id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image,
+      image: getCurrentImage(),
       size: selectedSize,
       color: selectedColor,
       customDesign
@@ -110,9 +135,9 @@ export default function ProductDetail() {
           <Card>
             <CardContent className="p-6">
               <img 
-                src={product.image} 
+                src={getCurrentImage()} 
                 alt={product.name}
-                className="w-full h-96 object-cover rounded-lg mb-6"
+                className="w-full h-96 object-cover rounded-lg mb-6 transition-all duration-300"
               />
               
               <div className="space-y-4">
@@ -178,16 +203,26 @@ export default function ProductDetail() {
 
               <div>
                 <Label className="block text-sm font-medium mb-2">Color</Label>
-                <Select value={selectedColor} onValueChange={setSelectedColor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select color" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {product.colors.map(color => (
-                      <SelectItem key={color} value={color}>{color}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  {product.colors.map(color => (
+                    <Button
+                      key={color.value}
+                      variant={selectedColor === color.value ? "default" : "outline"}
+                      onClick={() => setSelectedColor(color.value)}
+                      className="justify-start"
+                    >
+                      <div 
+                        className={`w-4 h-4 rounded-full mr-2 border ${
+                          color.value === 'white' ? 'border-gray-300' : 'border-transparent'
+                        }`}
+                        style={{ 
+                          backgroundColor: color.value === 'navy' ? '#1e3a8a' : color.value 
+                        }}
+                      />
+                      {color.name}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
 
