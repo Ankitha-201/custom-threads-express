@@ -8,7 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { CreditCard, Truck, MapPin } from 'lucide-react';
+import { CreditCard, Truck, MapPin, Smartphone } from 'lucide-react';
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
@@ -25,7 +31,7 @@ export default function Checkout() {
     city: '',
     state: '',
     zipCode: '',
-    country: 'United States'
+    country: 'India'
   });
 
   // Payment Information
@@ -37,7 +43,15 @@ export default function Checkout() {
   });
 
   const [paymentMethod, setPaymentMethod] = useState('card');
+  const [selectedUpiApp, setSelectedUpiApp] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const upiApps = [
+    { id: 'googlepay', name: 'Google Pay', icon: '📱' },
+    { id: 'phonepe', name: 'PhonePe', icon: '💜' },
+    { id: 'paytm', name: 'Paytm', icon: '💙' },
+    { id: 'upi', name: 'Other UPI Apps', icon: '🏦' }
+  ];
 
   const handleInputChange = (section: 'shipping' | 'payment', field: string, value: string) => {
     if (section === 'shipping') {
@@ -97,7 +111,98 @@ export default function Checkout() {
       }
     }
 
+    if (paymentMethod === 'razorpay' && !selectedUpiApp) {
+      toast({ 
+        title: 'Select UPI App', 
+        description: 'Please select a UPI app to continue',
+        variant: 'destructive' 
+      });
+      return false;
+    }
+
     return true;
+  };
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleRazorpayPayment = async () => {
+    const scriptLoaded = await loadRazorpayScript();
+    
+    if (!scriptLoaded) {
+      toast({
+        title: 'Payment Failed',
+        description: 'Razorpay SDK failed to load. Please try again.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const finalAmount = total + 5.99 + (total * 0.08);
+    
+    const options = {
+      key: 'rzp_test_9999999999', // Replace with your Razorpay key
+      amount: Math.round(finalAmount * 100), // Amount in paise
+      currency: 'INR',
+      name: 'Your Store Name',
+      description: 'Order Payment',
+      image: '/placeholder.svg',
+      prefill: {
+        name: shippingInfo.fullName,
+        email: shippingInfo.email,
+        contact: shippingInfo.phone,
+      },
+      method: {
+        upi: selectedUpiApp !== 'upi',
+        card: false,
+        netbanking: false,
+        wallet: false,
+        emi: false,
+        paylater: false
+      },
+      theme: {
+        color: '#3399cc'
+      },
+      handler: function (response: any) {
+        // Payment successful
+        const orderData = {
+          orderId: 'ORD-' + Date.now(),
+          items,
+          total,
+          shippingInfo,
+          paymentMethod: 'razorpay',
+          paymentId: response.razorpay_payment_id
+        };
+
+        localStorage.setItem('lastOrder', JSON.stringify(orderData));
+        clearCart();
+        navigate('/order-success');
+        
+        toast({ 
+          title: 'Payment Successful!', 
+          description: 'Your order has been placed successfully.' 
+        });
+      },
+      modal: {
+        ondismiss: function() {
+          toast({
+            title: 'Payment Cancelled',
+            description: 'Payment was cancelled by user.',
+            variant: 'destructive'
+          });
+        }
+      }
+    };
+
+    const razorpay = new window.Razorpay(options);
+    razorpay.open();
   };
 
   const handlePlaceOrder = async () => {
@@ -106,34 +211,35 @@ export default function Checkout() {
     setIsProcessing(true);
     
     try {
-      // Simulate payment processing
-      toast({ 
-        title: 'Processing Payment...', 
-        description: 'Please wait while we process your order' 
-      });
+      if (paymentMethod === 'razorpay') {
+        await handleRazorpayPayment();
+      } else {
+        // Simulate payment processing for other methods
+        toast({ 
+          title: 'Processing Payment...', 
+          description: 'Please wait while we process your order' 
+        });
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Simulate payment success
-      const orderData = {
-        orderId: 'ORD-' + Date.now(),
-        items,
-        total,
-        shippingInfo,
-        paymentMethod
-      };
+        const orderData = {
+          orderId: 'ORD-' + Date.now(),
+          items,
+          total,
+          shippingInfo,
+          paymentMethod
+        };
 
-      // Store order data for success page
-      localStorage.setItem('lastOrder', JSON.stringify(orderData));
-      
-      clearCart();
-      navigate('/order-success');
-      
-      toast({ 
-        title: 'Order Placed Successfully!', 
-        description: 'You will receive a confirmation email shortly.' 
-      });
+        localStorage.setItem('lastOrder', JSON.stringify(orderData));
+        clearCart();
+        navigate('/order-success');
+        
+        toast({ 
+          title: 'Order Placed Successfully!', 
+          description: 'You will receive a confirmation email shortly.' 
+        });
+      }
     } catch (error) {
       toast({ 
         title: 'Payment Failed', 
@@ -202,7 +308,7 @@ export default function Checkout() {
                     id="phone"
                     value={shippingInfo.phone}
                     onChange={(e) => handleInputChange('shipping', 'phone', e.target.value)}
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="+91 9876543210"
                   />
                 </div>
 
@@ -233,7 +339,7 @@ export default function Checkout() {
                       id="city"
                       value={shippingInfo.city}
                       onChange={(e) => handleInputChange('shipping', 'city', e.target.value)}
-                      placeholder="New York"
+                      placeholder="Mumbai"
                     />
                   </div>
                   <div>
@@ -242,16 +348,16 @@ export default function Checkout() {
                       id="state"
                       value={shippingInfo.state}
                       onChange={(e) => handleInputChange('shipping', 'state', e.target.value)}
-                      placeholder="NY"
+                      placeholder="Maharashtra"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="zipCode">ZIP Code *</Label>
+                    <Label htmlFor="zipCode">PIN Code *</Label>
                     <Input
                       id="zipCode"
                       value={shippingInfo.zipCode}
                       onChange={(e) => handleInputChange('shipping', 'zipCode', e.target.value)}
-                      placeholder="10001"
+                      placeholder="400001"
                     />
                   </div>
                 </div>
@@ -275,8 +381,8 @@ export default function Checkout() {
                       <Label htmlFor="card">Credit/Debit Card</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="paypal" id="paypal" />
-                      <Label htmlFor="paypal">PayPal</Label>
+                      <RadioGroupItem value="razorpay" id="razorpay" />
+                      <Label htmlFor="razorpay">Razorpay (UPI)</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="cod" id="cod" />
@@ -331,17 +437,31 @@ export default function Checkout() {
                   </>
                 )}
 
-                {paymentMethod === 'paypal' && (
-                  <div className="p-4 bg-yellow-50 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      You will be redirected to PayPal to complete your payment.
-                    </p>
+                {paymentMethod === 'razorpay' && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <div className="flex items-center mb-3">
+                        <Smartphone className="mr-2 h-5 w-5 text-blue-600" />
+                        <p className="text-sm font-medium text-blue-800">
+                          Select your preferred UPI app:
+                        </p>
+                      </div>
+                      <RadioGroup value={selectedUpiApp} onValueChange={setSelectedUpiApp} className="space-y-2">
+                        {upiApps.map((app) => (
+                          <div key={app.id} className="flex items-center space-x-3 p-2 rounded border bg-white">
+                            <RadioGroupItem value={app.id} id={app.id} />
+                            <span className="text-lg">{app.icon}</span>
+                            <Label htmlFor={app.id} className="font-medium">{app.name}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
                   </div>
                 )}
 
                 {paymentMethod === 'cod' && (
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-blue-800">
+                  <div className="p-4 bg-orange-50 rounded-lg">
+                    <p className="text-sm text-orange-800">
                       Pay with cash when your order is delivered. Additional charges may apply.
                     </p>
                   </div>
@@ -375,26 +495,26 @@ export default function Checkout() {
                         )}
                       </div>
                     </div>
-                    <p className="font-medium text-sm">${(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="font-medium text-sm">₹{(item.price * item.quantity * 83).toFixed(2)}</p>
                   </div>
                 ))}
                 
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Subtotal:</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>₹{(total * 83).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Shipping:</span>
-                    <span>$5.99</span>
+                    <span>₹{(5.99 * 83).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Tax:</span>
-                    <span>${(total * 0.08).toFixed(2)}</span>
+                    <span>₹{(total * 0.08 * 83).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total:</span>
-                    <span>${(total + 5.99 + (total * 0.08)).toFixed(2)}</span>
+                    <span>₹{((total + 5.99 + (total * 0.08)) * 83).toFixed(2)}</span>
                   </div>
                 </div>
                 
@@ -404,7 +524,7 @@ export default function Checkout() {
                   size="lg"
                   disabled={isProcessing}
                 >
-                  {isProcessing ? 'Processing...' : `Pay $${(total + 5.99 + (total * 0.08)).toFixed(2)}`}
+                  {isProcessing ? 'Processing...' : `Pay ₹${((total + 5.99 + (total * 0.08)) * 83).toFixed(2)}`}
                 </Button>
                 
                 <p className="text-xs text-gray-500 text-center">
